@@ -1,0 +1,19 @@
+{
+    "bedgraph_rolling_means_params" : "--n_guides 20 --subtract_background",
+    "sig_window_col" : "fdr.utest",
+    "sig_window_thres" : "0.05",
+    "eff_window_col" : "mean",
+    "eff_window_thres" : "0.25",
+    "tiling_statistic_params" : "--grnaWindowSize 20 --minOffTargetScore 50 --minT0count 50 --T0columns rep1_START,rep2_START --codeDir /nfs/turbo/path-rjhryan-turbo/software/crispri_lander/region_scoring --scoreColumn mean_log2FC",
+    "lib_filepath" : {
+        "K562" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/results/K562_results.txt",
+        "Pfeiffer" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/results/Pfeiffer_results.txt",
+        "REH" : "/nfs/turbo/path-rjhryan-turbo/data-ryanlab/ngs_processed_data/20180523_Run_2334_juhi_CRISPRi/results/REH_R1_T0_results.txt"
+    }, 
+    "tiling_region_beds" : {
+        "MYC" : "/nfs/turbo/path-rjhryan-turbo/lab-members/Travis/projects/CRISPRi_screen_processing/MYC_lite_tiling_region.bed"
+    },
+    "flux_log_dir" : "/scratch/rjhryan_fluxod/rjhryan/tmp/retiling_190613_1/logs",
+    "results" : "/scratch/rjhryan_fluxod/rjhryan/tmp/retiling_190613_1/",
+    "tmpdir" : "/scratch/rjhryan_fluxod/rjhryan/tmp/"
+}

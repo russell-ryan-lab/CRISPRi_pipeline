@@ -1,0 +1,32 @@
+{
+    "bedgraph_rolling_means_params" : "--n_guides 20 --subtract_background",
+    "bowtie_index" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/BowtieIndex/190508.MYCLite",
+    "counts_to_results_params" : "--T0_mincount 50 --readcount_normalize --data_file /nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/190508_MYCLite_design_reqCols_sorted.txt",
+    "sig_window_col" : "fdr.utest",
+    "sig_window_thres" : "0.05",
+    "tiling_statistic_params" : "--grnaWindowSize 20 --minOffTargetScore 50 --minT0count 50 --T0columns rep1_START,rep2_START --codeDir /nfs/turbo/path-rjhryan-turbo/software/crispri_lander/region_scoring --scoreColumn mean_log2FC",
+    "lib_filepath" : {
+        "K562_1_T0" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/K562-1-T0.fastq.gz",
+        "K562_1_T14" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/K562-1-Tend.fastq.gz",
+        "K562_2_T0" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/K562-2-T0.fastq.gz",
+        "K562_2_T14" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/K562-2-Tend.fastq.gz"
+    },
+    "expt_libs" : {
+        "K562" : {
+            "START" : {
+                "1" : "K562_1_T0",
+                "2" : "K562_2_T0"
+            },
+            "END" : {
+                "1" : "K562_1_T14",
+                "2" : "K562_2_T14"
+            }
+        }
+    },
+    "tiling_region_beds" : {
+        "MYC" : "/nfs/turbo/path-rjhryan-turbo/lab-members/Travis/projects/CRISPRi_screen_processing/MYC_lite_tiling_region.bed"
+    },
+    "flux_log_dir" : "/scratch/rjhryan_fluxod/rjhryan/tmp/BROAD_CRISPRi_Screens_24bp/logs",
+    "results" : "/scratch/rjhryan_fluxod/rjhryan/tmp/BROAD_CRISPRi_Screens_24bp/",
+    "tmpdir" : "/scratch/rjhryan_fluxod/rjhryan/tmp/"
+}

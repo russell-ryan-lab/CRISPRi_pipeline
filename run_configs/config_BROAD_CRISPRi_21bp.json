@@ -1,0 +1,64 @@
+{
+    "bedgraph_rolling_means_params" : "--n_guides 20 --subtract_background",
+    "bowtie_index" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/BowtieIndex/190508.MYCLite.21",
+    "counts_to_results_params" : "--T0_mincount 50 --readcount_normalize --data_file /nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/190508_MYCLite_design_reqCols_sorted.txt",
+    "sig_window_col" : "fdr.utest",
+    "sig_window_thres" : "0.05",
+    "tiling_statistic_params" : "--grnaWindowSize 20 --minOffTargetScore 50 --minT0count 50 --T0columns rep1_START,rep2_START --codeDir /nfs/turbo/path-rjhryan-turbo/software/crispri_lander/region_scoring --scoreColumn mean_log2FC",
+    "lib_filepath" : {
+        "ANBL6_1_T0" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/ANBL6-1-T0.fastq.gz",
+        "ANBL6_1_T14" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/ANBL6-1-T14.fastq.gz",
+        "ANBL6_2_T0" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/ANBL6-2-T0.fastq.gz",
+        "ANBL6_2_T14" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/ANBL6-2-T14.fastq.gz",
+        "Karpas422_1_T0" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/Seq99711-A10_KARPASMYC-1-T0_GGTCCAGA-GCCA.fastq.gz",
+        "Karpas422_1_T14" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/Seq9972-A6_KARPASMYC-1_Tend_AGTTGCTT-CATA.fastq.gz",
+        "Karpas422_2_T0" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/Seq99712-A11_KARPASMYC-2-T0_GTATAACA-CCAG.fastq.gz",
+        "Karpas422_2_T14" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/Seq9973-A7_KARPASMYC-2_Tend_CCAGTTAG-GTAC.fastq.gz",
+        "Karpas422_3_T0" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/Seq99713-A12_KARPASMYC-3-T0_TTCGCTGA-ATTG.fastq.gz",
+        "Karpas422_3_T14" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/Seq9974-A8_KARPASMYC-3_Tend_TTGAGCCT-TGCG.fastq.gz",
+        "U266_1_T0" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/U266-1-T0_ACCAACTG-TGCG.fastq.gz",
+        "U266_1_T14" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/U266-1-T14_CCAGTTAG-TGCG.fastq.gz",
+        "U266_2_T0" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/U266-2-T0_GTATAACA-TGCG.fastq.gz",
+        "U266_2_T14" : "/nfs/turbo/path-rjhryan-turbo/data-collaborators/lander_lab/BROAD_CRISPR_screens/fastq/U266-2-T14_TTCGCTGA-TGCG.fastq.gz"
+    },
+    "expt_libs" : {
+        "ANBL6" : {
+            "START" : {
+                "1" : "ANBL6_1_T0",
+                "2" : "ANBL6_2_T0"
+            },
+            "END" : {
+                "1" : "ANBL6_1_T14",
+                "2" : "ANBL6_2_T14"
+            }
+        },
+        "Karpas422" : {
+            "START" : {
+                "1" : "Karpas422_1_T0",
+                "2" : "Karpas422_2_T0",
+                "3" : "Karpas422_3_T0"
+            },
+            "END" : {
+                "1" : "Karpas422_1_T14",
+                "2" : "Karpas422_2_T14",
+                "3" : "Karpas422_3_T14",
+            }
+        },
+        "U266" : {
+            "START" : {
+                "1" : "U266_1_T0",
+                "2" : "U266_2_T0"
+            },
+            "END" : {
+                "1" : "U266_1_T14",
+                "2" : "U266_2_T14"
+            }
+        }
+    },
+    "tiling_region_beds" : {
+        "MYC" : "/nfs/turbo/path-rjhryan-turbo/lab-members/Travis/projects/CRISPRi_screen_processing/MYC_lite_tiling_region.bed"
+    },
+    "flux_log_dir" : "/scratch/rjhryan_fluxod/trsaari/tmp/BROAD_CRISPRi_Screens/logs",
+    "results" : "/scratch/rjhryan_fluxod/trsaari/tmp/BROAD_CRISPRi_Screens/",
+    "tmpdir" : "/scratch/rjhryan_fluxod/trsaari/tmp/"
+}

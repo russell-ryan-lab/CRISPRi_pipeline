@@ -1,0 +1,195 @@
+import os
+import sys
+import functools
+import json
+import re
+import pandas as pd # Tested w/ v0.24
+from collections import defaultdict
+
+
+# RESULT PATHS
+
+prefix_results = functools.partial(os.path.join, config['results'])
+FASTQ_DIR = prefix_results('fastq')
+SAM_DIR = prefix_results('sam')
+COUNTS_DIR = prefix_results('counts')
+RESULTS_DIR = prefix_results('results')
+
+
+# Load Modules
+
+software_strings = [
+	"module load cutadapt/1.14 ;",
+	"module load bowtie/1.0.0 ;",
+	"module load python-anaconda3/latest-3.6 ;", #Python3 pre-req for python scripts (must also have their prereq python libraries installed)
+	"module load R/3.4.1; export R_LIBS_USER=$HOME/local_R;", #Pre-requisite for CalculateTilingStatistic.R. Must also have installed prereq libraries (In this case in $HOME/local_R)
+	"function counts_to_results.py() {{ python3 /nfs/turbo/path-rjhryan-turbo/software/ryanlab_scripts/CRISPRi_processing/CRISPRi_counts_to_results.py $@ ; }} ;", #CRISPRi_processing commit 4211bbb
+	"function bedgraph_rolling_means.py() {{ python3 /nfs/turbo/path-rjhryan-turbo/software/ryanlab_scripts/CRISPRi_processing/CRISPRi_bedgraph_rolling_means.py $@ ; }} ;", #CRISPRi_processing commit 333343d
+	"function CalculateTilingStatistic.R() {{ Rscript /nfs/turbo/path-rjhryan-turbo/software/crispri_lander/region_scoring/src/CRISPRScreen/CalculateTilingStatistic.R $@ ; }} ;"
+]
+
+shell.prefix("".join(software_strings))
+
+
+# Helper Functions
+
+def expt_df_json(expt_name, expt_dict, basepath, file_suffix):
+	'''
+	Creates json string to load information from config['expt_libs']
+	as a dataframe for input into counts_to_results.py
+	'''
+	rows = []
+	#Gather rows of data
+	for timepoint in expt_dict:
+		for rep in expt_dict[timepoint]:
+			lib_id = expt_dict[timepoint][rep]
+			file = os.path.join(basepath, lib_id + file_suffix)
+			sr = pd.Series((expt_name, timepoint, rep, file))
+			rows.append(sr)
+	#Create pandas df
+	df = pd.concat(rows, axis=1, ignore_index=True).transpose()
+	df.columns = ['expt_name', 'timepoint', 'replicate', 'countsfilepath']
+	#Convert to json
+	jstring = df.to_json()
+	#TODO: pandas to_json method includes escape characters from the use of the ujson module under the hood. If this changes in the future, can remove re.sub step.
+	jstring_noescape = re.sub(r'\\/', '/', jstring)
+	return(jstring_noescape)
+
+def expt_get_libs(libdict):
+	for time in libdict:
+		for rep in libdict[time]:
+			lib = libdict[time][rep]
+			yield lib
+
+
+# Set workdir - If running on Flux cluster, logs will be placed in this location
+workdir:
+	config['flux_log_dir']
+
+
+# Rules
+
+rule all:
+	input:
+		expand(os.path.join(RESULTS_DIR, "{expt}_{region}.bedgraph"), expt=config['expt_libs'].keys(), region=config['tiling_region_beds'].keys()),
+		expand(os.path.join(RESULTS_DIR, "{expt}_9col.bed"), expt=config['expt_libs'].keys()),
+		expand(os.path.join(RESULTS_DIR, "{expt}_sig_windows.bed"), expt=config['expt_libs'].keys())
+
+#rule cutadapt:
+#	input:
+#		lambda wildcards: config['lib_filepath'][wildcards.library]
+#	output:
+#		temp(os.path.join(FASTQ_DIR, "{library}_trimmed.fastq.gz"))
+#	params:
+#		params = config['cutadapt_params']
+#	shell:
+#		"cutadapt {params.params} -o {output} {input}"
+
+rule bowtie:
+	input:
+#		os.path.join(FASTQ_DIR, "{library}_trimmed.fastq.gz")
+		#If trimming is not needed, comment-out cutadapt rule and use line below for input to start pipeline from here
+		lambda wildcards: config['lib_filepath'][wildcards.library]
+	output:
+		temp(os.path.join(SAM_DIR, "{library}.sam"))
+	threads: 8
+	params:
+		index = config['bowtie_index']
+	shell:
+		"zcat {input} | bowtie -v 0 --norc -p {threads} {params.index} - {output}"
+
+rule count:
+	input:
+		os.path.join(SAM_DIR, "{library}.sam")
+	output:
+		os.path.join(COUNTS_DIR, "{library}.counts")
+	run:
+		counts = defaultdict(int)
+		with open(input[0], "r") as in_file:
+			for line in in_file:
+				linedata = line.split("\t")
+				item = linedata[2]
+				counts[item] += 1
+		with open(output[0], "w") as out_file:
+			for key,value in counts.items():
+				printstr = key + '\t' + str(value) + '\n'
+				out_file.write(printstr)
+
+rule counts_to_results:
+	input:
+		#Pseudo-inputs so that snakemake can keep track. The script actually takes input information as json string, so params.input_json is where the magic happens.
+		lambda wildcards: expand(os.path.join(COUNTS_DIR, "{library}.counts"), library=expt_get_libs(config['expt_libs'][wildcards.expt]))
+	output:
+		os.path.join(RESULTS_DIR, "{expt}_results.txt")
+	params:
+		params = config['counts_to_results_params'],
+		outdir = RESULTS_DIR,
+		input_json = lambda wildcards: expt_df_json(wildcards.expt, config['expt_libs'][wildcards.expt], COUNTS_DIR, ".counts")
+	shell:
+		"counts_to_results.py {params.params} -o {params.outdir} -j '{params.input_json}'"
+
+rule bedgraph_rolling_means:
+	input:
+		os.path.join(RESULTS_DIR, "{expt}_results.txt")
+	output:
+		os.path.join(RESULTS_DIR, "{expt}_{region}.bedgraph")
+	params:
+		bed_file = lambda wildcards: config['tiling_region_beds'][wildcards.region],
+		params = config['bedgraph_rolling_means_params']
+	shell:
+		"bedgraph_rolling_means.py {params.params} -b {params.bed_file} -r {input} -o {output}"
+
+rule make_9col_bedfile:
+	#Assign colors to scores, place in 9th column of 9-column bed file
+	input:
+		os.path.join(RESULTS_DIR, "{expt}_results.txt")
+	output:
+		os.path.join(RESULTS_DIR, "{expt}_9col.bed")
+	run:
+		colors = ["#CA0020", "#F4A582", "#808080", "#92C5DE", "#0571B0"] #Ordered from red to grey to blue
+		#Use pandas Int64 for integer coordinates allowing for NA values
+		#https://pandas.pydata.org/pandas-docs/version/0.24/whatsnew/v0.24.0.html#optional-integer-na-support
+		dat = pd.read_csv(input[0], sep="\t", dtype={"start" : pd.Int64Dtype(), "end" : pd.Int64Dtype()})
+		minscore = dat['mean_log2FC'].min()
+		maxscore = dat['mean_log2FC'].max()
+		#Assign color bins
+		bin_rgb = pd.cut(dat['mean_log2FC'], bins=[minscore, -2,-1,1,2,maxscore], labels = colors).rename("RGB", inplace=True)
+		dat = dat.join(bin_rgb)
+		dat['thickStart'] = dat['start']
+		dat['thickEnd'] = dat['end']
+		bed_9col = dat[['chr', 'start', 'end', 'OligoID', 'mean_log2FC', 'strand', 'thickStart', 'thickEnd', 'RGB']].copy()
+		bed_9col.dropna(inplace=True)
+		bed_9col.to_csv(output[0], sep='\t', header=False, index=False)
+
+rule tiling_statistic:
+	input:
+		os.path.join(RESULTS_DIR, "{expt}_results.txt")
+	output:
+		os.path.join(RESULTS_DIR, "{expt}_tiling_stat.txt")
+	params:
+		of_prefix = os.path.join(RESULTS_DIR, "{expt}"),
+		params = config['tiling_statistic_params']
+	shell:
+		"CalculateTilingStatistic.R --input {input} --output {params.of_prefix} {params.params}"
+
+rule significant_windows:
+	input:
+		os.path.join(RESULTS_DIR, "{expt}_tiling_stat.txt")
+	output:
+		os.path.join(RESULTS_DIR, "{expt}_sig_windows.bed")
+	params:
+		sig_col = config['sig_window_col'],
+		sig_thres = float(config['sig_window_thres'])
+	run:
+		dat = pd.read_csv(input[0], sep="\t", dtype={"start" : pd.Int64Dtype(), "end" : pd.Int64Dtype()})
+#		sig = dat[dat[params.sig_col] <= params.sig_thres]
+		sig = dat[(dat[params.sig_col] <= params.sig_thres) & (abs(dat[params.eff_col]) > params.eff_thres)]
+		sig['name'] = "."
+		sig['strand'] = "."
+		windows = sig[['chr', 'start', 'end', 'name', params.sig_col, 'strand']].copy() #Note: includes sig_col as the bed file score
+		windows.to_csv(output[0], sep='\t', header=False, index=False)
+		
+
+
+
+

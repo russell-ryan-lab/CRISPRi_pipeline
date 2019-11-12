@@ -1,0 +1,33 @@
+{
+    "__default__" : {
+        "name" : "{rule}_{wildcards.library}",
+        "account" : "rjhryan",
+        "partition" : "standard",
+        "nodes" : "1",
+        "ntask" : "1",
+        "memory" : "4000",
+        "time" : "00:30:00"
+    },
+    "bowtie" : {
+        "time" : "01:30:00"
+    },
+    "cutadapt" : {
+        "time" : "04:00:00"
+    },
+    "counts_to_results" : {
+        "name" : "{rule}_{wildcards.expt}"
+    },
+    "bedgraph_rolling_means" : {
+        "name" : "{rule}_{wildcards.expt}_{wildcards.region}"
+    },
+    "tiling_statistic" : {
+        "name" : "{rule}_{wildcards.expt}",
+        "time" : "01:00:00"
+    },
+    "make_9col_bedfile" : {
+        "name" : "{rule}_{wildcards.expt}"
+    },
+    "significant_windows" : {
+        "name" : "{rule}_{wildcards.expt}"
+    }
+}

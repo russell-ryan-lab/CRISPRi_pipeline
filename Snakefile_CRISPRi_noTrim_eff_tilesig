@@ -1,0 +1,73 @@
+import os
+import sys
+import functools
+import json
+import re
+import pandas as pd # Tested w/ v0.24
+from collections import defaultdict
+
+
+# RESULT PATHS
+
+prefix_results = functools.partial(os.path.join, config['results'])
+RESULTS_DIR = prefix_results('results')
+
+
+# Load Modules
+
+software_strings = [
+	"module load cutadapt/1.14 ;",
+	"module load bowtie/1.0.0 ;",
+	"module load python-anaconda3/latest-3.6 ;", #Python3 pre-req for python scripts (must also have their prereq python libraries installed)
+	"module load R/3.4.1; export R_LIBS_USER=$HOME/local_R;", #Pre-requisite for CalculateTilingStatistic.R. Must also have installed prereq libraries (In this case in $HOME/local_R)
+#	"function bedgraph_rolling_means.py() {{ python3 /nfs/turbo/path-rjhryan-turbo/software/ryanlab_scripts/CRISPRi_processing/CRISPRi_bedgraph_rolling_means.py $@ ; }} ;", #CRISPRi_processing commit 333343d
+	"function CalculateTilingStatistic.R() {{ Rscript /nfs/turbo/path-rjhryan-turbo/software/crispri_lander/region_scoring/src/CRISPRScreen/CalculateTilingStatistic.R $@ ; }} ;"
+]
+
+shell.prefix("".join(software_strings))
+
+
+
+# Set workdir - If running on Flux cluster, logs will be placed in this location
+workdir:
+	config['flux_log_dir']
+
+
+# Rules
+
+rule all:
+	input:
+		expand(os.path.join(RESULTS_DIR, "{expt}_sig_windows.bed"), expt=config['lib_filepath'])
+
+
+rule tiling_statistic:
+	input:
+		lambda wildcards: config['lib_filepath'][wildcards.expt]
+	output:
+		os.path.join(RESULTS_DIR, "{expt}_tiling_stat.txt")
+	params:
+		of_prefix = os.path.join(RESULTS_DIR, "{expt}"),
+		params = config['tiling_statistic_params']
+	shell:
+		"CalculateTilingStatistic.R --input {input} --output {params.of_prefix} {params.params}"
+
+rule significant_windows:
+	input:
+		os.path.join(RESULTS_DIR, "{expt}_tiling_stat.txt")
+	output:
+		os.path.join(RESULTS_DIR, "{expt}_sig_windows.bed")
+	params:
+		sig_col = config['sig_window_col'],
+		sig_thres = float(config['sig_window_thres'])
+	run:
+		dat = pd.read_csv(input[0], sep="\t", dtype={"start" : pd.Int64Dtype(), "end" : pd.Int64Dtype()})
+		sig = dat[(dat[params.sig_col] <= params.sig_thres) & (abs(dat[params.eff_col]) > params.eff_thres)]
+		sig['name'] = "."
+		sig['strand'] = "."
+		windows = sig[['chr', 'start', 'end', 'name', params.sig_col, 'strand']].copy() #Note: includes sig_col as the bed file score
+		windows.to_csv(output[0], sep='\t', header=False, index=False)
+		
+
+
+
+
