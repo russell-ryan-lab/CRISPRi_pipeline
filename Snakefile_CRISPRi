@@ -159,8 +159,15 @@ rule make_9col_bedfile:
         dat = pd.read_csv(input[0], sep="\t", dtype={"start" : pd.Int64Dtype(), "end" : pd.Int64Dtype()})
         minscore = dat['mean_log2FC'].min()
         maxscore = dat['mean_log2FC'].max()
+        #
+        #Workaround for when minscore / maxscore are within intended bins of -2, -1, 1, 2
+        if maxscore <= 2:
+            maxscore = 2.5
+        if minscore >= -2:
+            minscore = -2.5
+        #
         #Assign color bins
-        bin_rgb = pd.cut(dat['mean_log2FC'], bins=[minscore, -2,-1,1,2,maxscore], labels = colors).rename("RGB", inplace=True)
+        bin_rgb = pd.cut(dat['mean_log2FC'], bins=[minscore,-2,-1,1,2,maxscore], labels = colors).rename("RGB", inplace=True)
         dat = dat.join(bin_rgb)
         dat['thickStart'] = dat['start']
         dat['thickEnd'] = dat['end']
