@@ -26,9 +26,12 @@ Modify the last three entries to change the locations where logs, results, and t
 
     #Start screen or tmux to create a persistent session over ssh (I prefer screen)
     screen
-    #Navigate to the location of the snakefile
-    cd /nfs/turbo/path-rjhryan-turbo/lab-members/Travis/projects/snakemake_CRISPRi
-    #Modify the config as described above, then
+    #Clone this repository & navigate into it
+    git clone https://github.com/russell-ryan-lab/CRISPRi_pipeline
+    cd CRISPRi_pipeline
+
+Modify the config as described above, then try out the pipeline
+
     #Perform a dry-run (-n flag for dry-run, -p flag to print shell commands)
     snakemake -n -p --snakefile Snakefile_CRISPRi --configfile example/CRISPRi_2334_example_config.json
 
