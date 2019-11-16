@@ -1,6 +1,6 @@
 {
     "__default__" : {
-        "name" : "{rule}_{wildcards.library}",
+        "name" : "{rule}_{wildcards}",
         "account" : "rjhryan",
         "partition" : "standard",
         "nodes" : "1",
