@@ -78,9 +78,13 @@ workdir:
 
 rule all:
     input:
-        expand(os.path.join(RESULTS_DIR, "{expt}_{region}.bedgraph"), expt=config['expt_libs'].keys(), region=config['tiling_region_beds'].keys()),
-        expand(os.path.join(RESULTS_DIR, "{expt}_9col.bed"), expt=config['expt_libs'].keys()),
-        expand(os.path.join(RESULTS_DIR, "{expt}_sig_windows.bed"), expt=config['expt_libs'].keys())
+        expand(os.path.join(RESULTS_DIR, "{expt}_{region}.preNormFilt.bedgraph"), expt=config['expt_libs'].keys(), region=config['tiling_region_beds'].keys()),
+        expand(os.path.join(RESULTS_DIR, "{expt}_preNormFilt.9col.bed"), expt=config['expt_libs'].keys()),
+        expand(os.path.join(RESULTS_DIR, "{expt}_sig_windows.bed"), expt=config['expt_libs'].keys()),
+        expand(os.path.join(RESULTS_DIR, "{expt}_{region}.filt.norm.bedgraph"), expt=config['expt_libs'].keys(), region=config['tiling_region_beds'].keys()),
+        expand(os.path.join(RESULTS_DIR, "{expt}_preFilt.norm.9col.bed"), expt=config['expt_libs'].keys()), #change from "{expt}_preFilt.norm.9col.bed"
+        expand(os.path.join(RESULTS_DIR, "{expt}_filt.norm.9col.bed"), expt=config['expt_libs'].keys())
+
 
 rule cutadapt:
     input:
@@ -135,23 +139,65 @@ rule counts_to_results:
     shell:
         "python {SCRIPTS_DIR}/CRISPRi_counts_to_results.py {params.params} -o {params.outdir} -j '{params.input_json}'"
 
-rule bedgraph_rolling_means:
+rule tiling_statistic:
     input:
         os.path.join(RESULTS_DIR, "{expt}_results.txt")
     output:
-        os.path.join(RESULTS_DIR, "{expt}_{region}.bedgraph")
+        os.path.join(RESULTS_DIR, "{expt}_results.norm.txt"),
+        os.path.join(RESULTS_DIR, "{expt}_results.filt.norm.txt"),
+        os.path.join(RESULTS_DIR, "{expt}_tiling_stat.txt")
+    params:
+        of_prefix = os.path.join(RESULTS_DIR, "{expt}"),
+        params = config['tiling_statistic_params']
+    shell:
+        "CalculateTilingStatistic.R --input {input} --output {params.of_prefix} {params.params}"
+
+rule significant_windows:
+    input:
+        os.path.join(RESULTS_DIR, "{expt}_tiling_stat.txt")
+    output:
+        os.path.join(RESULTS_DIR, "{expt}_sig_windows.bed")
+    params:
+        sig_col = config['sig_window_col'],
+        sig_thres = float(config['sig_window_thres'])
+    run:
+        dat = pd.read_csv(input[0], sep="\t", dtype={"start" : pd.Int64Dtype(), "end" : pd.Int64Dtype()})
+        sig = dat[dat[params.sig_col] <= params.sig_thres]
+        sig['name'] = "."
+        sig['strand'] = "."
+        windows = sig[['chr', 'start', 'end', 'name', params.sig_col, 'strand']].copy() #Note: includes sig_col as the bed file score
+        windows.to_csv(output[0], sep='\t', header=False, index=False)
+
+rule bedgraph_rolling_means:
+    #This produces a bedgraph with the unfiltered reads and no normalization
+    input:
+        os.path.join(RESULTS_DIR, "{expt}_results.txt")
+    output:
+        os.path.join(RESULTS_DIR, "{expt}_{region}.preNormFilt.bedgraph")
     params:
         bed_file = lambda wildcards: config['tiling_region_beds'][wildcards.region],
         params = config['bedgraph_rolling_means_params']
     shell:
         "python {SCRIPTS_DIR}/CRISPRi_bedgraph_rolling_means.py {params.params} -b {params.bed_file} -r {input} -o {output}"
 
-rule make_9col_bedfile:
+rule bedgraph_rolling_means_filt_norm:
+    #This produces a bedgraph using only the reads that passed the specified quality filters, normalized to controls as specified in paramaters.
+    input:
+        os.path.join(RESULTS_DIR, "{expt}_results.filt.norm.txt")
+    output:
+        os.path.join(RESULTS_DIR, "{expt}_{region}.filt.norm.bedgraph")
+    params:
+        bed_file = lambda wildcards: config['tiling_region_beds'][wildcards.region],
+        params = config['bedgraph_rolling_means_params']
+    shell:
+        "python {SCRIPTS_DIR}/CRISPRi_bedgraph_rolling_means_filt_norm.py {params.params} -b {params.bed_file} -r {input} -o {output}"
+
+rule make_9col_bedfile: # This creates a browser-compatible color-coded .bed of the guides with color corresponding to score (no filtering or normalization)
     #Assign colors to scores, place in 9th column of 9-column bed file
     input:
         os.path.join(RESULTS_DIR, "{expt}_results.txt")
     output:
-        os.path.join(RESULTS_DIR, "{expt}_9col.bed")
+        os.path.join(RESULTS_DIR, "{expt}_preNormFilt.9col.bed")
     run:
         colors = ["#CA0020", "#F4A582", "#808080", "#92C5DE", "#0571B0"] #Ordered from red to grey to blue
         #Use pandas Int64 for integer coordinates allowing for NA values
@@ -175,29 +221,60 @@ rule make_9col_bedfile:
         bed_9col.dropna(inplace=True)
         bed_9col.to_csv(output[0], sep='\t', header=False, index=False)
 
-rule tiling_statistic:
+rule make_9col_bedfile_norm: # Color-coded .bed of the normalized guides with normalization but no filtering
+    #Assign colors to scores, place in 9th column of 9-column bed file
     input:
-        os.path.join(RESULTS_DIR, "{expt}_results.txt")
+        os.path.join(RESULTS_DIR, "{expt}_results.norm.txt")
     output:
-        os.path.join(RESULTS_DIR, "{expt}_tiling_stat.txt")
-    params:
-        of_prefix = os.path.join(RESULTS_DIR, "{expt}"),
-        params = config['tiling_statistic_params']
-    shell:
-        "CalculateTilingStatistic.R --input {input} --output {params.of_prefix} {params.params}"
-
-rule significant_windows:
-    input:
-        os.path.join(RESULTS_DIR, "{expt}_tiling_stat.txt")
-    output:
-        os.path.join(RESULTS_DIR, "{expt}_sig_windows.bed")
-    params:
-        sig_col = config['sig_window_col'],
-        sig_thres = float(config['sig_window_thres'])
+        os.path.join(RESULTS_DIR, "{expt}_preFilt.norm.9col.bed")
     run:
+        colors = ["#CA0020", "#F4A582", "#808080", "#92C5DE", "#0571B0"] #Ordered from red to grey to blue
+        #Use pandas Int64 for integer coordinates allowing for NA values
+        #https://pandas.pydata.org/pandas-docs/version/0.24/whatsnew/v0.24.0.html#optional-integer-na-support
         dat = pd.read_csv(input[0], sep="\t", dtype={"start" : pd.Int64Dtype(), "end" : pd.Int64Dtype()})
-        sig = dat[dat[params.sig_col] <= params.sig_thres]
-        sig['name'] = "."
-        sig['strand'] = "."
-        windows = sig[['chr', 'start', 'end', 'name', params.sig_col, 'strand']].copy() #Note: includes sig_col as the bed file score
-        windows.to_csv(output[0], sep='\t', header=False, index=False)
+        minscore = dat['mean_log2FC_norm'].min() # temp change from 'mean_log2FC_norm'
+        maxscore = dat['mean_log2FC_norm'].max() # temp change from 'mean_log2FC_norm'
+        #
+        #Workaround for when minscore / maxscore are within intended bins of -2, -1, 1, 2
+        if maxscore <= 2:
+            maxscore = 2.5
+        if minscore >= -2:
+            minscore = -2.5
+        #
+        #Assign color bins
+        bin_rgb = pd.cut(dat['mean_log2FC_norm'], bins=[minscore,-2,-1,1,2,maxscore], labels = colors).rename("RGB", inplace=True)
+        dat = dat.join(bin_rgb)
+        dat['thickStart'] = dat['start']
+        dat['thickEnd'] = dat['end']
+        bed_9col = dat[['chr', 'start', 'end', 'OligoID', 'mean_log2FC_norm', 'strand', 'thickStart', 'thickEnd', 'RGB']].copy()
+        bed_9col.dropna(inplace=True)
+        bed_9col.to_csv(output[0], sep='\t', header=False, index=False)
+
+rule make_9col_bedfile_filt_norm: # Color-coded .bed of the normalized guides with normalization and filtering for quality
+    #Assign colors to scores, place in 9th column of 9-column bed file
+    input:
+        os.path.join(RESULTS_DIR, "{expt}_results.filt.norm.txt")
+    output:
+        os.path.join(RESULTS_DIR, "{expt}_filt.norm.9col.bed")
+    run:
+        colors = ["#CA0020", "#F4A582", "#808080", "#92C5DE", "#0571B0"] #Ordered from red to grey to blue
+        #Use pandas Int64 for integer coordinates allowing for NA values
+        #https://pandas.pydata.org/pandas-docs/version/0.24/whatsnew/v0.24.0.html#optional-integer-na-support
+        dat = pd.read_csv(input[0], sep="\t", dtype={"start" : pd.Int64Dtype(), "end" : pd.Int64Dtype()})
+        minscore = dat['mean_log2FC_norm'].min()
+        maxscore = dat['mean_log2FC_norm'].max()
+    #
+    #Workaround for when minscore / maxscore are within intended bins of -2, -1, 1, 2
+        if maxscore <= 2:
+            maxscore = 2.5
+        if minscore >= -2:
+            minscore = -2.5
+    #
+    #Assign color bins
+        bin_rgb = pd.cut(dat['mean_log2FC_norm'], bins=[minscore, -2,-1,1,2,maxscore], labels = colors).rename("RGB", inplace=True)
+        dat = dat.join(bin_rgb)
+        dat['thickStart'] = dat['start']
+        dat['thickEnd'] = dat['end']
+        bed_9col = dat[['chr', 'start', 'end', 'OligoID', 'mean_log2FC_norm', 'strand', 'thickStart', 'thickEnd', 'RGB']].copy()
+        bed_9col.dropna(inplace=True)
+        bed_9col.to_csv(output[0], sep='\t', header=False, index=False)
