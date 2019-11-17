@@ -192,7 +192,8 @@ rule bedgraph_rolling_means_filt_norm:
     shell:
         "python {SCRIPTS_DIR}/CRISPRi_bedgraph_rolling_means_filt_norm.py {params.params} -b {params.bed_file} -r {input} -o {output}"
 
-rule make_9col_bedfile: # This creates a browser-compatible color-coded .bed of the guides with color corresponding to score (no filtering or normalization)
+rule make_9col_bedfile:
+    # This creates a browser-compatible color-coded .bed of the guides with color corresponding to score (no filtering or normalization)
     #Assign colors to scores, place in 9th column of 9-column bed file
     input:
         os.path.join(RESULTS_DIR, "{expt}_results.txt")
@@ -221,7 +222,8 @@ rule make_9col_bedfile: # This creates a browser-compatible color-coded .bed of 
         bed_9col.dropna(inplace=True)
         bed_9col.to_csv(output[0], sep='\t', header=False, index=False)
 
-rule make_9col_bedfile_norm: # Color-coded .bed of the normalized guides with normalization but no filtering
+rule make_9col_bedfile_norm:
+    # Color-coded .bed of the normalized guides with normalization but no filtering
     #Assign colors to scores, place in 9th column of 9-column bed file
     input:
         os.path.join(RESULTS_DIR, "{expt}_results.norm.txt")
@@ -250,7 +252,8 @@ rule make_9col_bedfile_norm: # Color-coded .bed of the normalized guides with no
         bed_9col.dropna(inplace=True)
         bed_9col.to_csv(output[0], sep='\t', header=False, index=False)
 
-rule make_9col_bedfile_filt_norm: # Color-coded .bed of the normalized guides with normalization and filtering for quality
+rule make_9col_bedfile_filt_norm:
+    # Color-coded .bed of the normalized guides with normalization and filtering for quality
     #Assign colors to scores, place in 9th column of 9-column bed file
     input:
         os.path.join(RESULTS_DIR, "{expt}_results.filt.norm.txt")
