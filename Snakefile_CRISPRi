@@ -81,10 +81,10 @@ rule all:
         expand(os.path.join(RESULTS_DIR, "{expt}_{region}.preNormFilt.bedgraph"), expt=config['expt_libs'].keys(), region=config['tiling_region_beds'].keys()),
         expand(os.path.join(RESULTS_DIR, "{expt}_preNormFilt.9col.bed"), expt=config['expt_libs'].keys()),
         expand(os.path.join(RESULTS_DIR, "{expt}_sig_windows.bed"), expt=config['expt_libs'].keys()),
+        expand(os.path.join(RESULTS_DIR, "{expt}_sig_windows_fcFilt.bed"), expt=config['expt_libs'].keys()),
         expand(os.path.join(RESULTS_DIR, "{expt}_{region}.filt.norm.bedgraph"), expt=config['expt_libs'].keys(), region=config['tiling_region_beds'].keys()),
-        expand(os.path.join(RESULTS_DIR, "{expt}_preFilt.norm.9col.bed"), expt=config['expt_libs'].keys()), #change from "{expt}_preFilt.norm.9col.bed"
+        expand(os.path.join(RESULTS_DIR, "{expt}_preFilt.norm.9col.bed"), expt=config['expt_libs'].keys()), #change from "{expt}_preFilt.norm.9col.bed",
         expand(os.path.join(RESULTS_DIR, "{expt}_filt.norm.9col.bed"), expt=config['expt_libs'].keys())
-
 
 rule cutadapt:
     input:
@@ -166,6 +166,24 @@ rule significant_windows:
         sig['name'] = "."
         sig['strand'] = "."
         windows = sig[['chr', 'start', 'end', 'name', params.sig_col, 'strand']].copy() #Note: includes sig_col as the bed file score
+        windows.to_csv(output[0], sep='\t', header=False, index=False)
+
+rule significant_windows_fcFilt:
+    input:
+        os.path.join(RESULTS_DIR, "{expt}_tiling_stat.txt")
+    output:
+        os.path.join(RESULTS_DIR, "{expt}_sig_windows_fcFilt.bed")
+    params:
+        sig_col = config['sig_window_col'],
+        sig_thres = float(config['sig_window_thres']),
+        sig_l2fc_thres = float(config['sig_window_l2fc_thres'])
+    run:
+        dat = pd.read_csv(input[0], sep="\t", dtype={"start" : pd.Int64Dtype(), "end" : pd.Int64Dtype()})
+        sig = dat[dat[params.sig_col] <= params.sig_thres]
+        sig2 = sig[abs(sig["mean"]) >= params.sig_l2fc_thres]
+        sig2['name'] = "."
+        sig2['strand'] = "."
+        windows = sig2[['chr', 'start', 'end', 'name', 'mean', 'strand']].copy() #Note: includes mean l2fc as the bed file score
         windows.to_csv(output[0], sep='\t', header=False, index=False)
 
 rule bedgraph_rolling_means:
